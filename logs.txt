@@ -1,0 +1,71 @@
+Integración de Stock de Sistema Externo [SE] a PILOT
+
+Crear unidad:
+    - U:/VENTAS/Log/Unidades/VIN_unidad_creada.json
+
+Actualizar unidad:
+    - U:/VENTAS/Log/Unidades/VIN_unidad_actualizada.json
+
+Cambio estado de disponibilidad de la unidad:
+    - U:/VENTAS/Log/Unidades/VIN_unidad_inmovilizada.json
+
+------------------------------------------------------------------------------
+
+Integración de Ventas de PILOT a ERP
+
+Error de integracion
+
+(Cuando los pedidos de PILOT vienen sin unidad)
+(Cuando los pedidos de PILOT tienen un cliente con los datos incorrectos)
+    - U:/VENTAS/Log/Ventas/idPilot_error_integration.json
+    - U:/VENTAS/Log/Ventas/idPilot_nota_error_integration.json
+
+
+Flujos principales
+
+A – CRM PILOT Crea una Venta
+    - U:/VENTAS/Log/Ventas/VIN_orden_venta_creada.json
+    - U:/VENTAS/Log/Ventas/VIN_numero_orden_venta.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_orden_venta.json
+    - U:/VENTAS/Log/Ventas/VIN_unidad_asignada.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_unidad_asignada.json
+
+B – ERP Asigna unidad a la venta
+    (Desarrollado pero no implementado por caracteristicas de DMS)
+    (Desde PILOT siempre se debe de mandar alguna unidad asignada)
+
+C – ERP Factura Unidad
+    - U:/VENTAS/Log/Ventas/VIN_unidad_facturada.json
+    - U:/VENTAS/Log/Ventas/VIN_datos_venta.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_venta_unidad.json
+
+D – ERP Entrega unidad
+    - U:/VENTAS/Log/Ventas/VIN_unidad_entregada.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_entrega.json
+    - U:/VENTAS/Log/Ventas/VIN_fecha_entrega_unidad.json
+
+Flujos secundarios
+
+E – ERP Anula Factura (por re-facturación, manteniendo la unidad asignada)
+    - U:/VENTAS/Log/Ventas/VIN_refacturar_venta.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_refacturacion_venta.json
+
+F – ERP Libera Unidad
+    (Desarrollado pero no implementado por caracteristicas de DMS)
+
+G – ERP Anula Operación 
+    - U:/VENTAS/Log/Ventas/VIN_anular_venta.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_venta_anulada.json
+
+    
+
+    Desarrollados pero no implementandos por uso de RFC generico
+
+H – ERP Actualiza datos del cliente a facturar
+    - U:/VENTAS/Log/Ventas/VIN_actualizacion_cliente.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_actualizacion_cliente.json
+
+I  – ERP Cambia el cliente a facturar
+    - U:/VENTAS/Log/Ventas/VIN_nuevo_cliente.json
+    - U:/VENTAS/Log/Ventas/VIN_asignar_nuevo_cliente.json
+    - U:/VENTAS/Log/Ventas/VIN_nota_asignacion_cliente.json

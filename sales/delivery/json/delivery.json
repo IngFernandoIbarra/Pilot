@@ -1,0 +1,13 @@
+{
+    "data": {
+        "id": "",
+        "status_code": "unidad_entregada"
+    },
+    "header": {
+        "FlowName": "sales_change_status",
+        "SequenceId": 1,
+        "TimeStamp": 1248377,
+        "TrackingId": "55A6BCD4-0857-4A86-85FB-09A228B641B4",
+        "access_token": "{{auth_token}}"
+    }
+}

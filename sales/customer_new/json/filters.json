@@ -1,0 +1,19 @@
+{
+    "data": {
+        "filters": [
+            {
+                "field": "tax_identification",
+                "operation": "=",
+                "value": ""
+            }
+        ],
+        "page": 1,
+        "limit": 25
+    },
+    "header": {
+        "FlowName": "customer_find",
+        "SequenceId": 1,
+        "TimeStamp": 1513352637,
+        "access_token": "{{access_token}}"
+    }
+}

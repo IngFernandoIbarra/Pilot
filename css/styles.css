@@ -1,0 +1,83 @@
+/* Estilos personalizados para la página de carga */
+
+body {
+    background-color: #000000;
+    /* Cambia el color de fondo de la página */
+}
+
+.container {
+    height: 100vh;
+    /* Asegura que el contenedor ocupe toda la altura de la ventana */
+}
+
+.spinner-border {
+    width: 5rem;
+    /* Tamaño del icono de carga */
+    height: 5rem;
+}
+
+#info {
+    font-size: 18px;
+    /* Tamaño del texto de información */
+    color: #ffffff;
+    /* Color del texto de información */
+}
+
+#data-1 {
+    font-size: 18px;
+    /* Tamaño del texto de información */
+    color: #ffffff;
+    /* Color del texto de información */
+}
+
+#data-2 {
+    font-size: 18px;
+    /* Tamaño del texto de información */
+    color: #ffffff;
+    /* Color del texto de información */
+}
+
+#data-3 {
+    font-size: 18px;
+    /* Tamaño del texto de información */
+    color: #ffffff;
+    /* Color del texto de información */
+}
+
+#data-4 {
+    font-size: 18px;
+    /* Tamaño del texto de información */
+    color: #ffffff;
+    /* Color del texto de información */
+}
+
+#data-5 {
+    font-size: 18px;
+
+    color: #ffffff;
+
+}
+
+#data-6 {
+    font-size: 18px;
+
+    color: #ffffff;
+
+}
+
+#data-7 {
+    font-size: 18px;
+
+    color: #ffffff;
+}
+
+/* Estilo para success */
+.success {
+    color: darkgreen;
+
+}
+
+/* Estilo para error */
+.error {
+    color: crimson;
+}

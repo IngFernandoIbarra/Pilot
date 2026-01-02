@@ -1,0 +1,14 @@
+{
+    "data": {
+        "id": "",
+        "availability_status_code":"",
+        "status_code": ""
+    },
+    "header": {
+        "FlowName": "stock_update",
+        "SequenceId": 1,
+        "TimeStamp": 124789,
+        "TrackingId": "55A6BCD4-0857-4A86-85FB-09A228B641B4",
+        "access_token": "{{auth_token}}"
+    }
+}

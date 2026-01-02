@@ -1,0 +1,21 @@
+{
+    "data": {
+		"filters": [
+			{
+				"field": "integration_reference_code",
+				"operation": "=",
+				"value": ""
+			}
+		],
+        "show_media": true,
+        "limit": 2,
+        "page": 1
+    },
+    "header": {
+        "FlowName": "stock_list",
+        "SequenceId": 2,
+        "TimeStamp": 1248377,
+        "TrackingId": "55A6BCD4-0857-4A86-85FB-09A228B641B4",
+        "access_token": ""
+    }
+}
