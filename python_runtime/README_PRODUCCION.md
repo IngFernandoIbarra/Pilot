@@ -1,25 +1,33 @@
-# Runtime Python para Producción
+# Runtime Python para Producción (sin dependencia de PHP)
 
-Este runtime permite operar en Python con la misma base de configuración que PHP.
+Este runtime ya no depende de `connection/*.php` ni de código JS para tokens.
+Toda la configuración vive en archivos JSON editables.
 
-## Qué toma de `connection/` y `token/`
-- `connection/routes.php`: `directoryToCheck` y `directoryToLog`.
-- `connection/connection.php`: host/usuario/password/base de datos.
-- `connection/tables.php`: nombres de tablas (`Customer`, `Stock`, `Erp`).
-- `token/AuthorizationBearer.txt`: bearer para integración.
+## Archivos de configuración
+- `python_runtime/config/runtime_config.json`
+- `python_runtime/config/tokens.json`
 
-## Ejecución
+## Interfaz gráfica
+Ejecuta:
 ```bash
-python -m python_runtime.run_production --once
-python -m python_runtime.run_production --interval 15
+python -m python_runtime.gui_app
 ```
 
-## Equivalencias con PHP
-- Reglas de detección de archivos basadas en `functions/selection_module.php`.
-- Respaldo de archivos procesados en `Respaldo/YYYYmmdd` (en lugar de borrado directo).
-- Escaneo periódico cada 15 segundos (igual que el ciclo de la UI actual).
+La interfaz permite:
+- Ver eventos de envío en tiempo real.
+- Botón **Iniciar envíos**.
+- Botón **Detener envíos**.
+- Agregar y eliminar tokens manualmente (guardados fuera del código).
 
-## Recomendación para pasar a producción
-1. Mover credenciales a variables de entorno y dejar `connection/*.php` solo como fallback.
-2. Ejecutar este runtime como servicio (systemd/supervisor).
-3. Implementar handlers por ruta (`sales_order`, `stock_create`, etc.) para llamar API PILOT y DB.
+## Modo consola
+```bash
+python -m python_runtime.run_production --once
+python -m python_runtime.run_production
+```
+
+## Respaldo de archivos procesados
+Los archivos se mueven a:
+`{directory_to_check}/Respaldo/YYYYmmdd/...`
+
+## Nota de migración
+Si hoy usas valores en PHP, cópialos una sola vez al JSON y desde ahí opera todo Python.

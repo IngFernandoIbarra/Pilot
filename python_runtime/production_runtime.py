@@ -1,41 +1,16 @@
-"""Runtime de producción en Python para igualar la operación actual de PHP.
-
-Incluye:
-- Carga de configuración desde `connection/` y `token/`.
-- Mapeo de patrones de archivos equivalente a `functions/selection_module.php`.
-- Escaneo de carpeta de entrada y respaldo de archivos procesados.
-
-Este módulo no sustituye automáticamente los endpoints PHP; provee una base
-operativa para ejecutar la misma lógica en producción con Python.
-"""
+"""Runtime de producción 100% Python (sin dependencia de PHP)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-import json
 from pathlib import Path
-import re
 import shutil
+import threading
 import time
 from typing import Callable, Iterable
 
-
-ASSIGN_RE = re.compile(r"\$(\w+)\s*=\s*'([^']*)';")
-
-
-@dataclass(frozen=True)
-class RuntimeConfig:
-    directory_to_check: Path
-    directory_to_log: Path
-    db_host: str
-    db_user: str
-    db_password: str
-    db_name: str
-    table_customers: str
-    table_stock: str
-    table_webhook: str
-    auth_bearer: str
+from python_runtime.settings import RuntimeConfig
 
 
 @dataclass(frozen=True)
@@ -64,35 +39,10 @@ ROUTE_RULES: tuple[RouteRule, ...] = (
 )
 
 
-def _parse_php_vars(path: Path) -> dict[str, str]:
-    content = path.read_text(encoding="utf-8")
-    return {k: v for k, v in ASSIGN_RE.findall(content)}
-
-
-def load_runtime_config(repo_root: Path) -> RuntimeConfig:
-    """Carga configuración desde `connection/*.php` y `token/AuthorizationBearer.txt`."""
-    routes = _parse_php_vars(repo_root / "connection" / "routes.php")
-    conn = _parse_php_vars(repo_root / "connection" / "connection.php")
-    tables = _parse_php_vars(repo_root / "connection" / "tables.php")
-
-    bearer = (repo_root / "token" / "AuthorizationBearer.txt").read_text(encoding="utf-8").strip()
-
-    return RuntimeConfig(
-        directory_to_check=Path(routes["directoryToCheck"]),
-        directory_to_log=Path(routes["directoryToLog"]),
-        db_host=conn["host"],
-        db_user=conn["usuariodb"],
-        db_password=conn["passwdb"],
-        db_name=conn["nombredb"],
-        table_customers=tables["Clientes"],
-        table_stock=tables["Inventario"],
-        table_webhook=tables["Webhook"],
-        auth_bearer=bearer,
-    )
+EventCallback = Callable[[str], None]
 
 
 def archive_input_file(source_path: Path, base_input_dir: Path) -> Path:
-    """Mueve el archivo a `Respaldo/YYYYmmdd` preservando ruta relativa."""
     source_path = source_path.resolve()
     base_input_dir = base_input_dir.resolve()
 
@@ -112,7 +62,7 @@ def archive_input_file(source_path: Path, base_input_dir: Path) -> Path:
 def iter_input_files(directory: Path) -> Iterable[Path]:
     if not directory.exists():
         return []
-    return (p for p in directory.rglob("*") if p.is_file())
+    return (p for p in directory.rglob("*") if p.is_file() and "Respaldo" not in p.parts)
 
 
 def detect_route(file_path: Path) -> str | None:
@@ -122,44 +72,71 @@ def detect_route(file_path: Path) -> str | None:
     return None
 
 
-def run_once(config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeConfig], None]] | None = None) -> dict[str, int]:
-    """Ejecuta una pasada de detección/procesamiento (equivale al ciclo de selección PHP)."""
+def run_once(config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeConfig], None]] | None = None, event_cb: EventCallback | None = None) -> dict[str, int]:
     handlers = handlers or {}
     stats = {"seen": 0, "matched": 0, "archived": 0}
+    input_dir = Path(config.directory_to_check)
 
-    for file_path in iter_input_files(config.directory_to_check):
+    for file_path in iter_input_files(input_dir):
         stats["seen"] += 1
         route = detect_route(file_path)
         if route is None:
             continue
 
         stats["matched"] += 1
+        if event_cb:
+            event_cb(f"[MATCH] {route} -> {file_path}")
+
         handler = handlers.get(route)
         if handler is not None:
             handler(file_path, config)
 
-        archive_input_file(file_path, config.directory_to_check)
+        backup = archive_input_file(file_path, input_dir)
         stats["archived"] += 1
+        if event_cb:
+            event_cb(f"[BACKUP] {backup}")
 
     return stats
 
 
-def run_forever(config: RuntimeConfig, interval_seconds: int = 15) -> None:
-    """Modo servicio para producción: sondeo periódico de entrada."""
-    while True:
-        stats = run_once(config)
-        print(json.dumps(stats, ensure_ascii=False), flush=True)
-        time.sleep(interval_seconds)
+class RuntimeRunner:
+    def __init__(self, config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeConfig], None]] | None = None, event_cb: EventCallback | None = None) -> None:
+        self.config = config
+        self.handlers = handlers or {}
+        self.event_cb = event_cb
+        self._thread: threading.Thread | None = None
+        self._stop = threading.Event()
+        self.last_stats = {"seen": 0, "matched": 0, "archived": 0}
+
+    def start(self) -> None:
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        if self.event_cb:
+            self.event_cb("[SYSTEM] Envíos iniciados")
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2)
+        if self.event_cb:
+            self.event_cb("[SYSTEM] Envíos detenidos")
+
+    def _loop(self) -> None:
+        interval = max(1, int(self.config.poll_interval_seconds))
+        while not self._stop.is_set():
+            self.last_stats = run_once(self.config, self.handlers, self.event_cb)
+            time.sleep(interval)
 
 
 __all__ = [
-    "RuntimeConfig",
     "RouteRule",
     "ROUTE_RULES",
-    "load_runtime_config",
     "archive_input_file",
     "iter_input_files",
     "detect_route",
     "run_once",
-    "run_forever",
+    "RuntimeRunner",
 ]

@@ -1,0 +1,12 @@
+{
+  "directory_to_check": "U:/VENTAS/Pilot",
+  "directory_to_log": "U:/VENTAS/Log",
+  "db_host": "",
+  "db_user": "",
+  "db_password": "",
+  "db_name": "",
+  "table_customers": "Customer",
+  "table_stock": "Stock",
+  "table_webhook": "Erp",
+  "poll_interval_seconds": 15
+}
