@@ -43,9 +43,9 @@ try {
 
                             //Eliminar archivo de servidor local
 
-                            unlink($file->getPathname());
+                            archive_input_file($file->getPathname(), $directoryToCheck);
 
-                            unlink($fileComment);
+                            archive_input_file($fileComment, $directoryToCheck);
 
                             break;
                         }

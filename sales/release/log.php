@@ -36,7 +36,7 @@ mysqli_query($dbConn, $sql);
 
 //Eliminar archivo de servidor local de cliente y de la unidad enviado de PILOT, para que no se puede hacer pedido automatico
 
-unlink($directoryToCheck . "/" . $bidFile . "/" . "Recibido" . "/" . $vin . "_unidad.txt");
-unlink($directoryToCheck . "/" . $bidFile . "/" . "Recibido" . "/" . $vin . "_cliente.txt");
+archive_input_file($directoryToCheck . "/" . $bidFile . "/" . "Recibido" . "/" . $vin . "_unidad.txt", $directoryToCheck);
+archive_input_file($directoryToCheck . "/" . $bidFile . "/" . "Recibido" . "/" . $vin . "_cliente.txt", $directoryToCheck);
 
 mysqli_close($dbConn);

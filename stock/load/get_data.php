@@ -63,7 +63,7 @@ if (is_dir($directoryToCheck)) {
 
             //Eliminar archivo de servidor local
 
-            unlink($file->getPathname());
+            archive_input_file($file->getPathname(), $directoryToCheck);
         }
     }
 }
