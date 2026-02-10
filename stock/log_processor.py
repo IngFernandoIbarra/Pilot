@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 from pathlib import Path
+import shutil
 from typing import Any, Mapping
 
 
@@ -55,6 +56,29 @@ def create_log(path: Path, payload: Any) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+
+
+def archive_input_file(source_path: Path, base_input_dir: Path) -> Path:
+    """Mueve un archivo de entrada a Respaldo/YYYYmmdd preservando ruta relativa."""
+    source_path = source_path.resolve()
+    base_input_dir = base_input_dir.resolve()
+
+    if not source_path.exists():
+        raise FileNotFoundError(f"No existe el archivo a respaldar: {source_path}")
+
+    relative = source_path.relative_to(base_input_dir)
+    backup_path = base_input_dir / "Respaldo" / datetime.now().strftime("%Y%m%d") / relative
+    backup_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        source_path.rename(backup_path)
+    except OSError:
+        shutil.copy2(source_path, backup_path)
+        source_path.unlink()
+
+    return backup_path
 
 
 def _extract_entity_data(array_json: list[dict[str, Any]]) -> Mapping[str, Any]:
@@ -178,6 +202,7 @@ __all__ = [
     "InventoryRecord",
     "create_folder",
     "create_log",
+    "archive_input_file",
     "save_stock_logs",
     "build_inventory_record",
     "upsert_inventory",

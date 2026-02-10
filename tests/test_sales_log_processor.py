@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sales.log_processor import save_sales_logs
+from sales.log_processor import archive_input_file, save_sales_logs
 
 
 class SalesLogProcessorTests(unittest.TestCase):
@@ -37,6 +37,21 @@ class SalesLogProcessorTests(unittest.TestCase):
             self.assertTrue(sent_file.exists())
             self.assertEqual(json.loads(response_file.read_text(encoding="utf-8")), payload[2])
             self.assertEqual(json.loads(sent_file.read_text(encoding="utf-8")), payload[9])
+
+
+    def test_archive_input_file_moves_to_backup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            source = base / "BID01" / "Recibido" / "entrada.json"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text('{"ok": true}', encoding="utf-8")
+
+            backup_path = archive_input_file(source, base)
+
+            self.assertFalse(source.exists())
+            self.assertTrue(backup_path.exists())
+            self.assertIn("Respaldo", str(backup_path))
+            self.assertEqual(backup_path.read_text(encoding="utf-8"), '{"ok": true}')
 
     def test_sale_error_uses_flat_sales_paths(self):
         payload = [

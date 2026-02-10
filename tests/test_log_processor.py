@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from stock.log_processor import build_inventory_record, save_stock_logs
+from stock.log_processor import archive_input_file, build_inventory_record, save_stock_logs
 
 
 class LogProcessorTests(unittest.TestCase):
@@ -36,6 +36,21 @@ class LogProcessorTests(unittest.TestCase):
     def test_build_inventory_record_for_update_uses_name_file(self):
         record = build_inventory_record(self.payload, "update")
         self.assertEqual(record.num_inv, "ABC123")
+
+
+    def test_archive_input_file_moves_to_backup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            source = base / "M2041" / "Recibido" / "archivo.txt"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("demo", encoding="utf-8")
+
+            backup_path = archive_input_file(source, base)
+
+            self.assertFalse(source.exists())
+            self.assertTrue(backup_path.exists())
+            self.assertIn("Respaldo", str(backup_path))
+            self.assertEqual(backup_path.read_text(encoding="utf-8"), "demo")
 
     def test_save_stock_logs_creates_both_files(self):
         with tempfile.TemporaryDirectory() as tmp:
