@@ -16,44 +16,116 @@ from python_runtime.settings import (
 
 # Compatibilidad: primero PySide6, luego PyQt6.
 try:
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import QTimer, Qt
     from PySide6.QtWidgets import (
         QApplication,
+        QFrame,
         QGridLayout,
         QHBoxLayout,
         QLabel,
         QLineEdit,
         QListWidget,
+        QListWidgetItem,
         QMainWindow,
         QMessageBox,
         QPushButton,
+        QStackedWidget,
         QTextEdit,
         QVBoxLayout,
         QWidget,
     )
 except ImportError:  # pragma: no cover - depende del entorno de ejecución.
-    from PyQt6.QtCore import QTimer
+    from PyQt6.QtCore import QTimer, Qt
     from PyQt6.QtWidgets import (
         QApplication,
+        QFrame,
         QGridLayout,
         QHBoxLayout,
         QLabel,
         QLineEdit,
         QListWidget,
+        QListWidgetItem,
         QMainWindow,
         QMessageBox,
         QPushButton,
+        QStackedWidget,
         QTextEdit,
         QVBoxLayout,
         QWidget,
     )
+
+
+APP_STYLE = """
+QMainWindow {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                stop:0 #0b1d2d, stop:0.5 #12283e, stop:1 #1f3d5c);
+}
+QFrame#Sidebar {
+    background-color: rgba(9, 27, 45, 220);
+    border-right: 1px solid rgba(255,255,255,40);
+}
+QFrame#Topbar {
+    background-color: rgba(15, 108, 190, 220);
+    border-radius: 8px;
+}
+QFrame#Card {
+    background-color: rgba(255, 255, 255, 205);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,80);
+}
+QLabel#Title {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+}
+QLabel#SectionTitle {
+    color: #0a4f85;
+    font-size: 14px;
+    font-weight: 600;
+}
+QLabel {
+    color: #112233;
+}
+QListWidget#Nav {
+    background: transparent;
+    color: #d6e8f9;
+    border: none;
+    outline: none;
+}
+QListWidget#Nav::item {
+    padding: 10px;
+    border-radius: 8px;
+    margin: 4px 8px;
+}
+QListWidget#Nav::item:selected {
+    background-color: rgba(24, 123, 211, 180);
+    color: white;
+}
+QPushButton {
+    background-color: #1786db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+QPushButton:hover {
+    background-color: #116fb6;
+}
+QLineEdit, QTextEdit, QListWidget {
+    background-color: rgba(255,255,255,238);
+    border: 1px solid #c9d7e2;
+    border-radius: 8px;
+    padding: 6px;
+}
+"""
 
 
 class RuntimeWindow(QMainWindow):
     def __init__(self, repo_root: Path) -> None:
         super().__init__()
         self.setWindowTitle("Pilot Runtime (Qt)")
-        self.resize(1100, 760)
+        self.resize(1180, 780)
+        self.setStyleSheet(APP_STYLE)
 
         self.repo_root = repo_root
         self.config_path = repo_root / "python_runtime" / "config" / "runtime_config.json"
@@ -69,58 +141,125 @@ class RuntimeWindow(QMainWindow):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._refresh_ui)
-        self.timer.start(350)
+        self.timer.start(300)
 
     def _build_ui(self) -> None:
         root = QWidget(self)
         self.setCentralWidget(root)
-        layout = QVBoxLayout(root)
+        outer = QHBoxLayout(root)
+        outer.setContentsMargins(18, 18, 18, 18)
+        outer.setSpacing(14)
 
-        # Controles principales
-        top = QHBoxLayout()
+        # Sidebar estilo panel izquierdo del ejemplo.
+        sidebar = QFrame()
+        sidebar.setObjectName("Sidebar")
+        sidebar.setFixedWidth(240)
+        side_layout = QVBoxLayout(sidebar)
+        side_layout.setContentsMargins(12, 12, 12, 12)
+
+        title = QLabel("Menu Principal")
+        title.setObjectName("Title")
+        side_layout.addWidget(title)
+
+        self.nav = QListWidget()
+        self.nav.setObjectName("Nav")
+        for item_text in ["Dashboard", "Envíos", "Tokens", "Configuración"]:
+            QListWidgetItem(item_text, self.nav)
+        self.nav.setCurrentRow(0)
+        self.nav.currentRowChanged.connect(self._switch_page)
+        side_layout.addWidget(self.nav, stretch=1)
+
+        self.logout_btn = QPushButton("Cerrar")
+        self.logout_btn.clicked.connect(self.close)
+        side_layout.addWidget(self.logout_btn)
+
+        outer.addWidget(sidebar)
+
+        # Panel principal
+        main_col = QVBoxLayout()
+        topbar = QFrame()
+        topbar.setObjectName("Topbar")
+        topbar_l = QHBoxLayout(topbar)
+        topbar_l.addWidget(QLabel("Runtime de Integración PILOT"))
+        topbar_l.addStretch(1)
+        self.stats_label = QLabel("seen=0 matched=0 archived=0")
+        topbar_l.addWidget(self.stats_label)
+        main_col.addWidget(topbar)
+
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self._build_dashboard_page())
+        self.stack.addWidget(self._build_events_page())
+        self.stack.addWidget(self._build_tokens_page())
+        self.stack.addWidget(self._build_config_page())
+
+        main_col.addWidget(self.stack, stretch=1)
+        outer.addLayout(main_col, stretch=1)
+
+    def _card(self) -> QFrame:
+        card = QFrame()
+        card.setObjectName("Card")
+        return card
+
+    def _build_dashboard_page(self) -> QWidget:
+        page = QWidget()
+        l = QVBoxLayout(page)
+
+        card = self._card()
+        card_l = QVBoxLayout(card)
+        t = QLabel("Control de envíos")
+        t.setObjectName("SectionTitle")
+        card_l.addWidget(t)
+
+        row = QHBoxLayout()
         self.btn_start = QPushButton("Iniciar envíos")
         self.btn_start.clicked.connect(self.start_runner)
         self.btn_stop = QPushButton("Detener envíos")
         self.btn_stop.clicked.connect(self.stop_runner)
         self.btn_save_cfg = QPushButton("Guardar configuración")
         self.btn_save_cfg.clicked.connect(self.save_config)
+        row.addWidget(self.btn_start)
+        row.addWidget(self.btn_stop)
+        row.addWidget(self.btn_save_cfg)
+        row.addStretch(1)
+        card_l.addLayout(row)
 
-        top.addWidget(self.btn_start)
-        top.addWidget(self.btn_stop)
-        top.addWidget(self.btn_save_cfg)
-        top.addStretch(1)
-        layout.addLayout(top)
+        l.addWidget(card)
+        l.addStretch(1)
+        return page
 
-        # Configuración
-        cfg_grid = QGridLayout()
-        self.input_dir = QLineEdit(self.runtime_config.directory_to_check)
-        self.log_dir = QLineEdit(self.runtime_config.directory_to_log)
-        self.interval = QLineEdit(str(self.runtime_config.poll_interval_seconds))
+    def _build_events_page(self) -> QWidget:
+        page = QWidget()
+        l = QVBoxLayout(page)
 
-        cfg_grid.addWidget(QLabel("Carpeta entrada"), 0, 0)
-        cfg_grid.addWidget(self.input_dir, 0, 1)
-        cfg_grid.addWidget(QLabel("Carpeta log"), 1, 0)
-        cfg_grid.addWidget(self.log_dir, 1, 1)
-        cfg_grid.addWidget(QLabel("Intervalo (s)"), 2, 0)
-        cfg_grid.addWidget(self.interval, 2, 1)
-        layout.addLayout(cfg_grid)
-
-        # Estado + eventos
-        self.stats_label = QLabel("seen=0 matched=0 archived=0")
-        layout.addWidget(self.stats_label)
+        card = self._card()
+        card_l = QVBoxLayout(card)
+        t = QLabel("Eventos en tiempo real")
+        t.setObjectName("SectionTitle")
+        card_l.addWidget(t)
 
         self.events_box = QTextEdit()
         self.events_box.setReadOnly(True)
-        self.events_box.setPlaceholderText("Eventos de envío en tiempo real...")
-        layout.addWidget(self.events_box, stretch=1)
+        self.events_box.setPlaceholderText("Aquí se muestran los envíos y respaldos...")
+        card_l.addWidget(self.events_box)
 
-        # Tokens
-        tk_grid = QGridLayout()
+        l.addWidget(card)
+        return page
+
+    def _build_tokens_page(self) -> QWidget:
+        page = QWidget()
+        l = QVBoxLayout(page)
+
+        card = self._card()
+        grid = QGridLayout(card)
+        title = QLabel("Tokens manuales (fuera de código)")
+        title.setObjectName("SectionTitle")
+        grid.addWidget(title, 0, 0, 1, 2)
+
         self.tokens_list = QListWidget()
-        tk_grid.addWidget(self.tokens_list, 0, 0, 5, 1)
+        grid.addWidget(self.tokens_list, 1, 0, 5, 1)
 
         self.token_name = QLineEdit()
-        self.token_name.setPlaceholderText("Nombre token (ej. Ags)")
+        self.token_name.setPlaceholderText("Nombre token")
         self.token_value = QLineEdit()
         self.token_value.setPlaceholderText("Valor token")
         self.btn_add_token = QPushButton("Agregar token")
@@ -130,14 +269,42 @@ class RuntimeWindow(QMainWindow):
         self.btn_save_tokens = QPushButton("Guardar tokens")
         self.btn_save_tokens.clicked.connect(self.save_tokens_ui)
 
-        tk_grid.addWidget(self.token_name, 0, 1)
-        tk_grid.addWidget(self.token_value, 1, 1)
-        tk_grid.addWidget(self.btn_add_token, 2, 1)
-        tk_grid.addWidget(self.btn_remove_token, 3, 1)
-        tk_grid.addWidget(self.btn_save_tokens, 4, 1)
+        grid.addWidget(self.token_name, 1, 1)
+        grid.addWidget(self.token_value, 2, 1)
+        grid.addWidget(self.btn_add_token, 3, 1)
+        grid.addWidget(self.btn_remove_token, 4, 1)
+        grid.addWidget(self.btn_save_tokens, 5, 1)
 
-        layout.addWidget(QLabel("Tokens manuales (fuera de código)"))
-        layout.addLayout(tk_grid)
+        l.addWidget(card)
+        return page
+
+    def _build_config_page(self) -> QWidget:
+        page = QWidget()
+        l = QVBoxLayout(page)
+
+        card = self._card()
+        grid = QGridLayout(card)
+        title = QLabel("Configuración de runtime")
+        title.setObjectName("SectionTitle")
+        grid.addWidget(title, 0, 0, 1, 2)
+
+        self.input_dir = QLineEdit(self.runtime_config.directory_to_check)
+        self.log_dir = QLineEdit(self.runtime_config.directory_to_log)
+        self.interval = QLineEdit(str(self.runtime_config.poll_interval_seconds))
+
+        grid.addWidget(QLabel("Carpeta entrada"), 1, 0)
+        grid.addWidget(self.input_dir, 1, 1)
+        grid.addWidget(QLabel("Carpeta log"), 2, 0)
+        grid.addWidget(self.log_dir, 2, 1)
+        grid.addWidget(QLabel("Intervalo (s)"), 3, 0)
+        grid.addWidget(self.interval, 3, 1)
+
+        l.addWidget(card)
+        l.addStretch(1)
+        return page
+
+    def _switch_page(self, index: int) -> None:
+        self.stack.setCurrentIndex(index)
 
     def _push_event(self, text: str) -> None:
         self.event_queue.put(text)
@@ -157,6 +324,7 @@ class RuntimeWindow(QMainWindow):
         self.save_config(silent=True)
         self.runner = RuntimeRunner(self.runtime_config, event_cb=self._push_event)
         self.runner.start()
+        self.nav.setCurrentRow(1)
 
     def stop_runner(self) -> None:
         self.runner.stop()
