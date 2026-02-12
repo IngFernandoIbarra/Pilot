@@ -1,8 +1,9 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from python_runtime.production_runtime import archive_input_file, detect_route, run_once
+from python_runtime.production_runtime import archive_input_file, create_default_handlers, detect_route, run_once
 from python_runtime.settings import RuntimeConfig, TokenItem, load_runtime_config, load_tokens, save_tokens
 
 
@@ -41,9 +42,41 @@ class ProductionRuntimeTests(unittest.TestCase):
             stats = run_once(cfg)
             self.assertEqual(stats["matched"], 1)
             self.assertEqual(stats["archived"], 1)
+            self.assertEqual(stats["errors"], 0)
 
             backups = list((base / "Respaldo").rglob("VIN_OrdenVenta.txt"))
             self.assertEqual(len(backups), 1)
+
+    def test_default_handlers_write_runtime_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            incoming = base / "M2041" / "Recibido" / "VIN_OrdenVenta.txt"
+            incoming.parent.mkdir(parents=True, exist_ok=True)
+            incoming.write_text('{"demo":true}', encoding="utf-8")
+
+            cfg = RuntimeConfig(directory_to_check=str(base), directory_to_log=str(base / "log"))
+            run_once(cfg, handlers=create_default_handlers())
+
+            logs = list((base / "log" / "Runtime" / "sales_order").rglob("*_processed_*.json"))
+            self.assertEqual(len(logs), 1)
+            payload = json.loads(logs[0].read_text(encoding="utf-8"))
+            self.assertEqual(payload["route"], "sales_order")
+
+    def test_handler_error_does_not_archive_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            incoming = base / "M2041" / "Recibido" / "VIN_OrdenVenta.txt"
+            incoming.parent.mkdir(parents=True, exist_ok=True)
+            incoming.write_text("demo", encoding="utf-8")
+
+            def broken_handler(_file, _cfg):
+                raise RuntimeError("boom")
+
+            cfg = RuntimeConfig(directory_to_check=str(base), directory_to_log=str(base / "log"))
+            stats = run_once(cfg, handlers={"sales_order": broken_handler})
+
+            self.assertEqual(stats["errors"], 1)
+            self.assertTrue(incoming.exists())
 
     def test_archive_input_file_preserves_relative_path(self):
         with tempfile.TemporaryDirectory() as tmp:

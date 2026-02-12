@@ -38,3 +38,9 @@ Los archivos se mueven a:
 
 ## Nota de migración
 Si hoy usas valores en PHP, cópialos una sola vez al JSON y desde ahí opera todo Python.
+
+
+## Producción total (completado)
+- El runtime ya trae handlers por defecto para todas las rutas detectadas.
+- Cada archivo procesado genera evidencia en `directory_to_log/Runtime/<ruta>/YYYYmmdd/*_processed_*.json`.
+- Si un handler falla, el archivo NO se respalda; se conserva en entrada y se incrementa `errors` para reintento seguro.

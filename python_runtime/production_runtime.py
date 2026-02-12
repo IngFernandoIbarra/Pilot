@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import json
 from pathlib import Path
 import shutil
 import threading
 import time
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 
 from python_runtime.settings import RuntimeConfig
 
@@ -40,6 +41,7 @@ ROUTE_RULES: tuple[RouteRule, ...] = (
 
 
 EventCallback = Callable[[str], None]
+RouteHandler = Callable[[Path, RuntimeConfig], None]
 
 
 def archive_input_file(source_path: Path, base_input_dir: Path) -> Path:
@@ -72,9 +74,48 @@ def detect_route(file_path: Path) -> str | None:
     return None
 
 
-def run_once(config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeConfig], None]] | None = None, event_cb: EventCallback | None = None) -> dict[str, int]:
-    handlers = handlers or {}
-    stats = {"seen": 0, "matched": 0, "archived": 0}
+def _read_payload(file_path: Path) -> Any:
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Si no es JSON, guardamos muestra de texto para trazabilidad.
+        return {"raw_preview": text[:2000], "is_json": False}
+
+
+def _default_route_handler(route: str) -> RouteHandler:
+    def handler(file_path: Path, config: RuntimeConfig) -> None:
+        payload = _read_payload(file_path)
+        now = datetime.now()
+        out_dir = Path(config.directory_to_log) / "Runtime" / route / now.strftime("%Y%m%d")
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        out_name = f"{file_path.stem}_processed_{now.strftime('%H%M%S')}.json"
+        out_path = out_dir / out_name
+
+        event = {
+            "route": route,
+            "timestamp": now.isoformat(),
+            "source_file": str(file_path),
+            "payload": payload,
+        }
+        out_path.write_text(json.dumps(event, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return handler
+
+
+def create_default_handlers() -> dict[str, RouteHandler]:
+    """Crea handlers productivos por ruta para dejar evidencia de procesamiento."""
+    return {rule.name: _default_route_handler(rule.name) for rule in ROUTE_RULES}
+
+
+def run_once(
+    config: RuntimeConfig,
+    handlers: dict[str, RouteHandler] | None = None,
+    event_cb: EventCallback | None = None,
+) -> dict[str, int]:
+    handlers = handlers or create_default_handlers()
+    stats = {"seen": 0, "matched": 0, "archived": 0, "errors": 0}
     input_dir = Path(config.directory_to_check)
 
     for file_path in iter_input_files(input_dir):
@@ -88,25 +129,36 @@ def run_once(config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeC
             event_cb(f"[MATCH] {route} -> {file_path}")
 
         handler = handlers.get(route)
-        if handler is not None:
-            handler(file_path, config)
+        try:
+            if handler is not None:
+                handler(file_path, config)
 
-        backup = archive_input_file(file_path, input_dir)
-        stats["archived"] += 1
-        if event_cb:
-            event_cb(f"[BACKUP] {backup}")
+            backup = archive_input_file(file_path, input_dir)
+            stats["archived"] += 1
+            if event_cb:
+                event_cb(f"[BACKUP] {backup}")
+
+        except Exception as exc:  # noqa: BLE001
+            stats["errors"] += 1
+            if event_cb:
+                event_cb(f"[ERROR] {route} -> {file_path} :: {exc}")
 
     return stats
 
 
 class RuntimeRunner:
-    def __init__(self, config: RuntimeConfig, handlers: dict[str, Callable[[Path, RuntimeConfig], None]] | None = None, event_cb: EventCallback | None = None) -> None:
+    def __init__(
+        self,
+        config: RuntimeConfig,
+        handlers: dict[str, RouteHandler] | None = None,
+        event_cb: EventCallback | None = None,
+    ) -> None:
         self.config = config
-        self.handlers = handlers or {}
+        self.handlers = handlers or create_default_handlers()
         self.event_cb = event_cb
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
-        self.last_stats = {"seen": 0, "matched": 0, "archived": 0}
+        self.last_stats = {"seen": 0, "matched": 0, "archived": 0, "errors": 0}
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -137,6 +189,7 @@ __all__ = [
     "archive_input_file",
     "iter_input_files",
     "detect_route",
+    "create_default_handlers",
     "run_once",
     "RuntimeRunner",
 ]

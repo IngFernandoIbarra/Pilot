@@ -184,7 +184,7 @@ class RuntimeWindow(QMainWindow):
         topbar_l = QHBoxLayout(topbar)
         topbar_l.addWidget(QLabel("Runtime de Integración PILOT"))
         topbar_l.addStretch(1)
-        self.stats_label = QLabel("seen=0 matched=0 archived=0")
+        self.stats_label = QLabel("seen=0 matched=0 archived=0 errors=0")
         topbar_l.addWidget(self.stats_label)
         main_col.addWidget(topbar)
 
@@ -313,7 +313,7 @@ class RuntimeWindow(QMainWindow):
 
     def _refresh_ui(self) -> None:
         stats = self.runner.last_stats
-        self.stats_label.setText(f"seen={stats['seen']} matched={stats['matched']} archived={stats['archived']}")
+        self.stats_label.setText(f"seen={stats['seen']} matched={stats['matched']} archived={stats['archived']} errors={stats.get('errors', 0)}")
 
         while True:
             try:
