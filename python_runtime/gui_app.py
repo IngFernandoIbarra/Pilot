@@ -16,7 +16,7 @@ from python_runtime.settings import (
 
 # Compatibilidad: primero PySide6, luego PyQt6.
 try:
-    from PySide6.QtCore import QTimer, Qt
+    from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import (
         QApplication,
         QFrame,
@@ -35,7 +35,7 @@ try:
         QWidget,
     )
 except ImportError:  # pragma: no cover - depende del entorno de ejecución.
-    from PyQt6.QtCore import QTimer, Qt
+    from PyQt6.QtCore import QTimer
     from PyQt6.QtWidgets import (
         QApplication,
         QFrame,
@@ -57,38 +57,38 @@ except ImportError:  # pragma: no cover - depende del entorno de ejecución.
 
 APP_STYLE = """
 QMainWindow {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                stop:0 #0b1d2d, stop:0.5 #12283e, stop:1 #1f3d5c);
+    background-color: #f5f6f7;
 }
 QFrame#Sidebar {
-    background-color: rgba(9, 27, 45, 220);
-    border-right: 1px solid rgba(255,255,255,40);
+    background-color: #1f2329;
+    border-right: 1px solid #2f343a;
 }
 QFrame#Topbar {
-    background-color: rgba(15, 108, 190, 220);
-    border-radius: 8px;
+    background-color: #ffffff;
+    border: 1px solid #e2e6ea;
+    border-radius: 10px;
 }
 QFrame#Card {
-    background-color: rgba(255, 255, 255, 205);
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,80);
+    background-color: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e6ea;
 }
 QLabel#Title {
-    color: white;
+    color: #ff6c37;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
 }
 QLabel#SectionTitle {
-    color: #0a4f85;
+    color: #20242a;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
 }
 QLabel {
-    color: #112233;
+    color: #2d333b;
 }
 QListWidget#Nav {
     background: transparent;
-    color: #d6e8f9;
+    color: #c6ccd3;
     border: none;
     outline: none;
 }
@@ -98,24 +98,26 @@ QListWidget#Nav::item {
     margin: 4px 8px;
 }
 QListWidget#Nav::item:selected {
-    background-color: rgba(24, 123, 211, 180);
+    background-color: #ff6c37;
     color: white;
 }
 QPushButton {
-    background-color: #1786db;
+    background-color: #ff6c37;
     color: white;
     border: none;
     border-radius: 8px;
     padding: 8px 12px;
+    font-weight: 600;
 }
 QPushButton:hover {
-    background-color: #116fb6;
+    background-color: #e85d2c;
 }
 QLineEdit, QTextEdit, QListWidget {
-    background-color: rgba(255,255,255,238);
-    border: 1px solid #c9d7e2;
+    background-color: #ffffff;
+    border: 1px solid #d8dde3;
     border-radius: 8px;
     padding: 6px;
+    color: #1f2329;
 }
 """
 
@@ -123,7 +125,7 @@ QLineEdit, QTextEdit, QListWidget {
 class RuntimeWindow(QMainWindow):
     def __init__(self, repo_root: Path) -> None:
         super().__init__()
-        self.setWindowTitle("Pilot Runtime (Qt)")
+        self.setWindowTitle("Pilot Runtime (Postman Style)")
         self.resize(1180, 780)
         self.setStyleSheet(APP_STYLE)
 
@@ -157,13 +159,13 @@ class RuntimeWindow(QMainWindow):
         side_layout = QVBoxLayout(sidebar)
         side_layout.setContentsMargins(12, 12, 12, 12)
 
-        title = QLabel("Menu Principal")
+        title = QLabel("Postman Runtime")
         title.setObjectName("Title")
         side_layout.addWidget(title)
 
         self.nav = QListWidget()
         self.nav.setObjectName("Nav")
-        for item_text in ["Dashboard", "Envíos", "Tokens", "Configuración"]:
+        for item_text in ["Collections", "Runner", "Tokens", "Settings"]:
             QListWidgetItem(item_text, self.nav)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._switch_page)
@@ -206,7 +208,7 @@ class RuntimeWindow(QMainWindow):
 
         card = self._card()
         card_l = QVBoxLayout(card)
-        t = QLabel("Control de envíos")
+        t = QLabel("Runner Control")
         t.setObjectName("SectionTitle")
         card_l.addWidget(t)
 
@@ -233,7 +235,7 @@ class RuntimeWindow(QMainWindow):
 
         card = self._card()
         card_l = QVBoxLayout(card)
-        t = QLabel("Eventos en tiempo real")
+        t = QLabel("Console / Events")
         t.setObjectName("SectionTitle")
         card_l.addWidget(t)
 
@@ -251,7 +253,7 @@ class RuntimeWindow(QMainWindow):
 
         card = self._card()
         grid = QGridLayout(card)
-        title = QLabel("Tokens manuales (fuera de código)")
+        title = QLabel("Authorization Tokens")
         title.setObjectName("SectionTitle")
         grid.addWidget(title, 0, 0, 1, 2)
 
@@ -284,7 +286,7 @@ class RuntimeWindow(QMainWindow):
 
         card = self._card()
         grid = QGridLayout(card)
-        title = QLabel("Configuración de runtime")
+        title = QLabel("Environment Settings")
         title.setObjectName("SectionTitle")
         grid.addWidget(title, 0, 0, 1, 2)
 
